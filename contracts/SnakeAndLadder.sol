@@ -18,7 +18,7 @@ contract SnakeAndLadder {
     }
 
     // max 4
-    uint8 private playerId = 1;
+    uint8 private playerId = 0;
     uint8 private chance;
     uint8 private winner;
     bool private gameStarted = false;
@@ -80,7 +80,7 @@ contract SnakeAndLadder {
     }
 
     modifier doesPlayerAlreadyExist(address _playerAddress) {
-        if (addressToPlayerId[_playerAddress] == 0) {
+        if (addressToPlayerId[_playerAddress] > 0) {
             revert PlayerAlreadyExists(_playerAddress);
         }
         _;
@@ -106,9 +106,9 @@ contract SnakeAndLadder {
         canAddPlayers
         doesPlayerAlreadyExist(_playerAddress)
     {
+        playerId++;
         addressToPlayerId[_playerAddress] = playerId;
         playerPositions[playerId] = 0;
-        playerId++;
         emit PlayerAdded(_playerAddress, playerId);
     }
 
@@ -120,7 +120,7 @@ contract SnakeAndLadder {
     }
 
     function startGame() public hasGameStarted {
-        if (playerId == 1) {
+        if (playerId <= 1) {
             revert AddMorePlayers();
         }
         gameStarted = true;
