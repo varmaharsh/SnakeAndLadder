@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "hardhat/console.sol";
 
 error GameStarted();
 error PlayerAlreadyExists(address);
@@ -7,6 +8,7 @@ error AddMorePlayers();
 error InvalidNumberOnDice();
 error NotYourChance();
 error CannotAddMorePlayers();
+error GameHasAlreadyEnded();
 
 contract SnakeAndLadder {
     event PlayerAdded(address, uint8);
@@ -46,7 +48,7 @@ contract SnakeAndLadder {
         snakesList.push(SnakeLadder(99, 80));
         for (uint16 i = 0; i < snakesList.length; i++) {
             SnakeLadder memory tempSnake = snakesList[i];
-            snakes[tempSnake.start] = snakes[tempSnake.end];
+            snakes[tempSnake.start] = tempSnake.end;
         }
         ladderList.push(SnakeLadder(2, 38));
         ladderList.push(SnakeLadder(7, 14));
@@ -60,8 +62,8 @@ contract SnakeAndLadder {
         ladderList.push(SnakeLadder(78, 98));
         ladderList.push(SnakeLadder(87, 94));
         for (uint16 i = 0; i < ladderList.length; i++) {
-            SnakeLadder memory tempLadder = ladderList[i];
-            ladders[tempLadder.start] = ladders[tempLadder.end];
+            SnakeLadder storage tempLadder = ladderList[i];
+            ladders[tempLadder.start] = tempLadder.end;
         }
     }
 
@@ -75,6 +77,13 @@ contract SnakeAndLadder {
     modifier hasGameNotStarted() {
         if (!gameStarted) {
             revert GameStarted();
+        }
+        _;
+    }
+
+    modifier hasGameEnded() {
+        if (gameEnded) {
+            revert GameHasAlreadyEnded();
         }
         _;
     }
@@ -138,10 +147,10 @@ contract SnakeAndLadder {
         }
     }
 
-    function checkWinner() internal returns (bool) {
-        if (playerPositions[playerId] >= 100) {
+    function checkWinner(uint8 _playerId) internal returns (bool) {
+        if (playerPositions[_playerId] >= 100) {
             gameEnded = true;
-            winner = playerId;
+            winner = _playerId;
             return true;
         }
         return false;
@@ -152,6 +161,7 @@ contract SnakeAndLadder {
         hasGameNotStarted
         checkNumberOnDice(_numberOnDice)
         checkPlayersChance(_playerId)
+        hasGameEnded
     {
         bool goToNextPlayer = true;
         // player hasn't entered the board
@@ -164,13 +174,17 @@ contract SnakeAndLadder {
         } else {
             uint16 newPosition = playerPositions[_playerId] + _numberOnDice;
             playerPositions[_playerId] = newPosition;
-            if (checkWinner()) {
+            if (checkWinner(_playerId)) {
                 emit GameEnded(winner);
+                return;
             }
             if (snakes[newPosition] != 0) {
                 playerPositions[_playerId] = snakes[newPosition];
             } else if (ladders[newPosition] != 0) {
                 playerPositions[_playerId] = ladders[newPosition];
+                goToNextPlayer = false;
+            }
+            if (_numberOnDice == 6) {
                 goToNextPlayer = false;
             }
         }
